@@ -47,15 +47,52 @@ else
 fi
 
 # ---------- python deps ----------
+install_python_deps() {
+  local pkgs=(python-pptx lxml jinja2 playwright)
+
+  # 1) 旧系统 / macOS：用户级 pip 直接装
+  if "$PYTHON" -m pip install --user --quiet --upgrade --disable-pip-version-check \
+       "${pkgs[@]}" 2>/dev/null; then
+    log "用户级 pip 安装成功"
+    INSTALL_PY="$PYTHON"
+    return 0
+  fi
+
+  # 2) PEP 668 / 系统 Python 锁死时：在 skill 目录建独立 venv
+  log "系统 pip 拒绝直装（多半是 PEP 668）；改用 $SKILL_DIR/.venv 独立环境"
+  if ! "$PYTHON" -m venv --help >/dev/null 2>&1; then
+    err "缺少 python3-venv。请先：sudo apt install python3-venv  然后重跑 install.sh"
+    return 1
+  fi
+
+  local venv="$SKILL_DIR/.venv"
+  if [[ ! -d "$venv" ]]; then
+    "$PYTHON" -m venv "$venv"
+  fi
+  if "$venv/bin/python" -m pip install --quiet --upgrade --disable-pip-version-check \
+       pip "${pkgs[@]}"; then
+    log "venv 安装成功：$venv"
+    INSTALL_PY="$venv/bin/python"
+    return 0
+  fi
+
+  # 3) 兜底：明确告知用户最后一招
+  err "venv 安装失败。最后一招（自担风险）：
+    $PYTHON -m pip install --break-system-packages --user ${pkgs[*]}"
+  return 1
+}
+
 if [[ -n "$PYTHON" ]]; then
   log "安装 Python 依赖（python-pptx / lxml / jinja2 / playwright）"
-  "$PYTHON" -m pip install --user --quiet --upgrade \
-    python-pptx lxml jinja2 playwright || warn "pip install 失败，请手动重试"
-
-  if "$PYTHON" -c "import playwright" >/dev/null 2>&1; then
-    log "下载 Playwright Chromium（用于 HTML 截图）"
-    "$PYTHON" -m playwright install chromium >/dev/null 2>&1 || \
-      warn "playwright install chromium 失败，HTML 渲染需要时再手动执行"
+  if install_python_deps; then
+    if "$INSTALL_PY" -c "import playwright" >/dev/null 2>&1; then
+      log "下载 Playwright Chromium（HTML 截图用，约 170MB）"
+      "$INSTALL_PY" -m playwright install chromium >/dev/null 2>&1 || \
+        warn "playwright install chromium 失败，HTML 渲染需要时再手动执行：
+          $INSTALL_PY -m playwright install chromium"
+    fi
+  else
+    warn "Python 依赖未就绪，渲染阶段会失败；请按上文提示处理后重试"
   fi
 fi
 

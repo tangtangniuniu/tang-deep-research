@@ -22,6 +22,15 @@ Deps: python-pptx, lxml.   pip install python-pptx lxml
 """
 from __future__ import annotations
 
+# --- skill venv self-bootstrap (transparent on PEP-668 systems) ---
+import os as _os, sys as _sys
+_HERE = _os.path.dirname(_os.path.abspath(__file__))
+_VENV_DIR = _os.path.join(_os.path.dirname(_HERE), ".venv")
+_VENV_PY = _os.path.join(_VENV_DIR, "bin", "python")
+if _os.path.isfile(_VENV_PY) and _os.path.realpath(_sys.prefix) != _os.path.realpath(_VENV_DIR):
+    _os.execv(_VENV_PY, [_VENV_PY] + _sys.argv)
+# --- end bootstrap ---
+
 import argparse
 import json
 import sys
