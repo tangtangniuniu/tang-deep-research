@@ -1,0 +1,29 @@
+# Distribution
+*.pptx
+*.pdf
+
+# Skill working dirs (per-run artifacts)
+raw/
+analysis/
+images/
+html/
+out/
+*.config.json
+run.config.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
