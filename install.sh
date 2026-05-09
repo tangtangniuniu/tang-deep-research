@@ -96,6 +96,38 @@ if [[ -n "$PYTHON" ]]; then
   fi
 fi
 
+# ---------- sub-skills ----------
+# 仓库内的子 skill 通过软链暴露给 ~/.claude/skills/<name>/，git pull 后自动同步
+link_subskill() {
+  local name="$1"
+  local src="$SKILL_DIR/skills/$name"
+  local dst="$(dirname "$SKILL_DIR")/$name"
+
+  if [[ ! -f "$src/SKILL.md" ]]; then
+    warn "子 skill 缺失：$src/SKILL.md，跳过"
+    return 0
+  fi
+
+  if [[ -L "$dst" ]]; then
+    local cur
+    cur="$(readlink "$dst")"
+    if [[ "$cur" == "$src" ]]; then
+      log "子 skill 已链接：$dst → $src"
+      return 0
+    fi
+    warn "$dst 是软链但指向 $cur，覆盖为 $src"
+    rm "$dst"
+  elif [[ -e "$dst" ]]; then
+    warn "$dst 已存在且不是软链，跳过 $name；如需覆盖请手动备份后删除"
+    return 0
+  fi
+
+  ln -s "$src" "$dst"
+  log "子 skill 已安装：$dst → $src"
+}
+
+link_subskill deep-analysis-prompt
+
 # ---------- optional system deps ----------
 if ! command -v vtracer >/dev/null 2>&1; then
   warn "未检测到 vtracer（imagegen 路径推荐）。可选安装：cargo install vtracer 或 pip install vtracer"
@@ -112,6 +144,10 @@ cat <<'EOF'
   - 对 <主题> 做深度分析并生成 PPT
   - 用我提供的资料目录 <path> 做一份 <主题> 的调研幻灯片
   - 对 <主题> 做调研报告然后做成幻灯片
+
+子 skill `deep-analysis-prompt`（只生成提示词，不跑渲染）触发例句：
+  - 帮我生成一个 <主题> 的深度分析提示词
+  - 为 <主题> 写一份行业分析的 prompt 模板
 
 更多用法见仓库 README。
 EOF
